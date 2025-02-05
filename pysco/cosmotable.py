@@ -204,6 +204,18 @@ def compute_growth_functions(
             atol=1e-13,
             args=(cosmo, param["parametrized_mu0"]),
         )
+    elif param["theory"].casefold() == "eft":
+        print('EFT')
+        solution = solve_ivp(
+            growth_parametrized_eft,
+            lnaexp_span,
+            y0,
+            t_eval=lnaexp_array,
+            rtol=1e-13,
+            atol=1e-13,
+            args=(cosmo, param["alphaB0"],param["alphaM0"]),
+        )
+
     else:
         solution = solve_ivp(
             growth,
@@ -333,6 +345,100 @@ def growth_parametrized(
     w0 = cosmo.w0
     wa = cosmo.wa
     mu = 1 + (parametrized_mu0 * Ode_z / Ode_z0)
+    beta = 1.5 * mu * Om_z
+    gamma = 0.5 * (1.0 - 3.0 * Ode_z * (w0 + wa * (1.0 - aexp)) - Or_z)
+
+    (
+        D1,
+        dD1dlnaexp,
+        D2,
+        dD2dlnaexp,
+        D3a,
+        dD3adlnaexp,
+        D3b,
+        dD3bdlnaexp,
+        D3c,
+        dD3cdlnaexp,
+    ) = y
+
+    # Derivatives
+    # First order
+    dy1_dt = dD1dlnaexp
+    dy2_dt = -gamma * dD1dlnaexp + beta * D1
+    # Second order
+    dy3_dt = dD2dlnaexp
+    dy4_dt = -gamma * dD2dlnaexp + beta * (D2 - D1**2)
+    # 3rd order a) term
+    dy5_dt = dD3adlnaexp
+    dy6_dt = -gamma * dD3adlnaexp + beta * (D3a - 2.0 * D1**3)
+    # 3rd order b) term
+    dy7_dt = dD3bdlnaexp
+    dy8_dt = -gamma * dD3bdlnaexp + beta * (D3b - 2.0 * D1 * (D2 - D1**2))
+    # 3rd order c) term
+    dy9_dt = dD3cdlnaexp
+    dy10_dt = (
+        (1 - gamma) * dD3cdlnaexp + D2 * dD1dlnaexp - D1 * dD2dlnaexp - beta * D1**3
+    )
+    return np.array(
+        [
+            dy1_dt,
+            dy2_dt,
+            dy3_dt,
+            dy4_dt,
+            dy5_dt,
+            dy6_dt,
+            dy7_dt,
+            dy8_dt,
+            dy9_dt,
+            dy10_dt,
+        ]
+    )
+
+def growth_parametrized_eft(
+    lnaexp: float, y: List[float], cosmo: Flatw0waCDM, alphaB0: float, alphaM0:float
+) -> npt.NDArray[np.float64]:
+    """
+    Parametrized gravity:
+    This function calculates the derivatives of the growth functions Dplus1, Dplus2, Dplus3a, Dplus3b, Dplus3c,
+    and their derivatives with respect to the logarithm of the scale factor (lnaexp) at a given scale factor (aexp).
+
+    Parameters
+    ----------
+    lnaexp (float): The logarithm of the scale factor.
+    y (List[float]): A list containing the current values of the growth functions and their derivatives.
+    cosmo (astropy.cosmology.Flatw0waCDM): The cosmological model used for the computations.
+    parametrized_mu0 (float): Free parameter for parametrized gravity
+
+    Returns
+    ----------
+    npt.NDArray[np.float64]: A list containing the derivatives of the growth functions and their derivatives.
+    """
+    aexp = np.exp(lnaexp)
+    z = 1.0 / aexp - 1
+    Om_z = cosmo.Om(z)
+    Or_z = cosmo.Ogamma(z) + cosmo.Onu(z)
+    Ode_z = cosmo.Ode(z)
+    Ode_z0 = cosmo.Ode0
+    w0 = cosmo.w0
+    wa = cosmo.wa
+    
+    E = cosmo.efunc(z)
+
+    om_m = cosmo.Om0
+    om_ma = om_m / (om_m + (1-om_m)*aexp**3)
+    #alphaB = alphaB0*(1-om_ma) / (1-om_m)
+    #alphaM = alphaM0*(1-om_ma) / (1-om_m)
+    alphaB = alphaB0 # constant
+    alphaM = alphaM0
+    HdotbyH2 = -1.5*om_ma
+    #Ia = np.power(om_ma,param["alphaM0"]/(3 * (1 - om_m)))
+    Ia = 1. # alphaM = 0 
+
+    #C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*a**3*alphaB0*om_m)/(a**3*(1 - om_m) + om_m)**2 + a**(-3.)*1.5*Ia*om_m/(E**2)
+    C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + aexp**(-3.)*1.5*Ia*om_m/(E**2) #alphaB is constant
+    xi = alphaB - alphaM
+    nu = C2 - alphaB*(xi - alphaM)
+    mu = np.float32(1 + xi*xi/nu)
     beta = 1.5 * mu * Om_z
     gamma = 0.5 * (1.0 - 3.0 * Ode_z * (w0 + wa * (1.0 - aexp)) - Or_z)
 
