@@ -25,6 +25,7 @@ from rich.logging import RichHandler
 import iostream
 from time import perf_counter
 import sys
+import laplacian
 
 
 def run(param) -> None:
@@ -109,11 +110,12 @@ def run(param) -> None:
         param["nsteps"] = 0
     logging.warning(f"\n[bold blue]----- Initial conditions -----[/bold blue]\n")
     position, velocity = initial_conditions.generate(param, tables)
+    print('ICs',position[0],velocity[0])
     param["t"] = tables[1](np.log(param["aexp"]))
     logging.warning(f"{param['aexp']=} {param['t']=}")
     logging.warning(f"\n[bold blue]----- Run N-body -----[/bold blue]\n")
-    logging.warning("Tables, {}".format(len(tables)))
     acceleration, potential, additional_field = solver.pm(position, param, tables=tables)
+
     aexp_out = 1.0 / (np.array(z_out) + 1)
     aexp_out.sort()
     t_out = tables[1](np.log(aexp_out))
@@ -141,8 +143,10 @@ def run(param) -> None:
             tables,
             param,
             t_out[param["i_snap"] - 1],
-        )  # Put None instead of potential if you do not want to use previous step
-
+        )
+        h = 2**(-1*param['ncoarse'])
+        print('Step:',param['nsteps'],position[0],velocity[0],2*laplacian.operator(potential,h)[0])  # Put None instead of potential if you do not want to use previous step
+        
         if (param["nsteps"] % param["n_reorder"]) == 0:
             logging.info("Reordering particles")
             position, velocity, acceleration = utils.reorder_particles(

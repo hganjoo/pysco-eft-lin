@@ -105,15 +105,18 @@ def pm(
                 + param["Om_lambda"] * evolution_term
             )
         )
-        param["parametrized_mu_z"] = np.float32(
+        '''param["parametrized_mu_z"] = np.float32(
             1 + param["parametrized_mu0"] * omega_lambda_z / param["Om_lambda"]
-        )
+        )'''
+        param["parametrized_mu_z"] = np.float32(
+            1 + param["parametrized_mu0"])
+
     elif "eft" == THEORY:
         alphaB0 = param["alphaB0"]
         alphaM0 = param["alphaM0"]
         a = param["aexp"]
         Eval = tables[2] 
-        E = Eval(a) / param["H0"]
+        E = Eval(np.log(a)) / param["H0"]
 
         om_m = param["Om_m"]
         om_ma = om_m / (om_m + (1-om_m)*a**3)
@@ -128,8 +131,10 @@ def pm(
         #C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*a**3*alphaB0*om_m)/(a**3*(1 - om_m) + om_m)**2 + a**(-3.)*1.5*Ia*om_m/(E**2)
         C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + a**(-3.)*1.5*Ia*om_m/(E**2) #alphaB is constant
         xi = alphaB - alphaM
-        nu = C2 - alphaB*(xi - alphaM)
-        param["parametrized_mu_z"] = np.float32(1 + xi*xi/nu)
+        nu = -C2 - alphaB*(xi - alphaM)
+        
+        param["parametrized_mu_z"] = np.float32((1 + xi*xi/nu))
+        print(param["parametrized_mu_z"])
          
     else:
         param["parametrized_mu_z"] = np.float32(1)

@@ -8,3 +8,8 @@
 /pysco/powerpics_ptest/
 /pysco/powerpics_ptestn/
 /pysco/*.ipynb
+/pysco/__pycache__
+/pysco/ptest-c
+/pysco/small
+/pysco/smallbig
+*.nbc

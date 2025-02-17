@@ -194,7 +194,7 @@ def compute_growth_functions(
     # Time points where the solution is computed
     lnaexp_array = np.linspace(lnaexp_span[0], lnaexp_span[1], 100_000)
 
-    if param["theory"].casefold() == "parametrized":
+    if param["theory"].casefold() == "to be changed":
         solution = solve_ivp(
             growth_parametrized,
             lnaexp_span,
@@ -204,24 +204,25 @@ def compute_growth_functions(
             atol=1e-13,
             args=(cosmo, param["parametrized_mu0"]),
         )
-    elif param["theory"].casefold() == "eft":
-        print('EFT')
-        solution = solve_ivp(
-            growth_parametrized_eft,
-            lnaexp_span,
-            y0,
-            t_eval=lnaexp_array,
-            rtol=1e-13,
-            atol=1e-13,
-            args=(cosmo, param["alphaB0"],param["alphaM0"]),
-        )
+    
+    # elif param["theory"].casefold() == "eft":
+    #     print('EFT')
+    #     solution = solve_ivp(
+    #         growth_parametrized_eft,
+    #         lnaexp_span,
+    #         y0,
+    #         t_eval=lnaexp_array,
+    #         rtol=1e-13,
+    #         atol=1e-13,
+    #         args=(cosmo, param["alphaB0"],param["alphaM0"]),
+    #     )
 
     else:
         solution = solve_ivp(
             growth,
             lnaexp_span,
             y0,
-            t_eval=lnaexp_array,
+            t_eval=lnaexp_array, 
             rtol=1e-13,
             atol=1e-13,
             args=(cosmo,),
@@ -238,7 +239,13 @@ def compute_growth_functions(
     f3a = solution.y[5] / d3a
     f3b = solution.y[7] / d3b
     f3c = solution.y[9] / d3c
+
+    print(lnaexp_array.shape,d1.shape,f1.shape,d2.shape,f2.shape)
+    
     return np.array([lnaexp_array, d1, f1, d2, f2, d3a, f3a, d3b, f3b, d3c, f3c])
+
+
+    
 
 
 def growth(
@@ -426,19 +433,24 @@ def growth_parametrized_eft(
 
     om_m = cosmo.Om0
     om_ma = om_m / (om_m + (1-om_m)*aexp**3)
-    #alphaB = alphaB0*(1-om_ma) / (1-om_m)
-    #alphaM = alphaM0*(1-om_ma) / (1-om_m)
-    alphaB = alphaB0 # constant
-    alphaM = alphaM0
+    alphaB = alphaB0*(1-om_ma) / (1-om_m)
+    alphaM = alphaM0*(1-om_ma) / (1-om_m)
+    #alphaB = alphaB0 # constant
+    #alphaM = alphaM0
     HdotbyH2 = -1.5*om_ma
-    #Ia = np.power(om_ma,param["alphaM0"]/(3 * (1 - om_m)))
-    Ia = 1. # alphaM = 0 
+    Ia = np.power(om_ma,alphaM0/(3 * (1 - om_m)))
+    #Ia = 1. # alphaM = 0 
+    #print(E**(-2)*aexp**(-3.)*Ia*1.5*om_m)
+    #print((3*aexp**3*alphaB0*om_m)/(aexp**3*(1 - om_m) + om_m)**2)
 
-    #C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*a**3*alphaB0*om_m)/(a**3*(1 - om_m) + om_m)**2 + a**(-3.)*1.5*Ia*om_m/(E**2)
-    C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + aexp**(-3.)*1.5*Ia*om_m/(E**2) #alphaB is constant
+    #C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*aexp**3*alphaB0*om_m)/(aexp**3*(1 - om_m) + om_m)**2 + aexp**(-3.)*Ia*1.5*om_m/(E**2)
+    C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*aexp**3*alphaB0*om_m)/(aexp**3*(1 - om_m) + om_m)**2 + E**(-2)*aexp**(-3.)*Ia*1.5*om_m
+
+    #C2 = -alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + aexp**(-3.)*1.5*Ia*om_m/(E**2) #alphaB is constant
     xi = alphaB - alphaM
-    nu = C2 - alphaB*(xi - alphaM)
+    nu = -C2 - alphaB*(xi - alphaM)
     mu = np.float32(1 + xi*xi/nu)
+    print(-alphaM + alphaB*(1 + alphaM) + (1 + alphaB)*HdotbyH2 + (3*aexp**3*alphaB0*om_m)/(aexp**3*(1 - om_m) + om_m)**2,E**(-2)*aexp**(-3.)*Ia*1.5*om_m,xi,nu)
     beta = 1.5 * mu * Om_z
     gamma = 0.5 * (1.0 - 3.0 * Ode_z * (w0 + wa * (1.0 - aexp)) - Or_z)
 
