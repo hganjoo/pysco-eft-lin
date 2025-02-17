@@ -13,3 +13,4 @@
 /pysco/small
 /pysco/smallbig
 *.nbc
+!test-small-lin.ipynb
